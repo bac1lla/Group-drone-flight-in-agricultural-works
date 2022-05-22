@@ -1,66 +1,192 @@
-ymaps.ready(init);
+var GPC
+ymaps.ready(['util.calculateArea', 'AnimatedLine']).then( function(){
+    var myMap = new ymaps.Map("map", {
+        center: [55.762, 37.57835813659775],
+        zoom: 16
+    }, {
+        searchControlProvider: 'yandex#search'
+    });
 
-function init () {
-    let myMap = new ymaps.Map("map", {
-            center: [56.317655,43.994362],
-            zoom: 15
-        }),
-        polygon = new ymaps.GeoObject({
-            geometry: {
-                type: "Polygon",
-                coordinates: []
+    var polygon = null;
+    var projection = myMap.options.get('projection')
+    $('.chk').change(function(){
+        if(this.checked){
+
+
+
+                // Перевод координат из пиксельных в географические
+                // coordinates = coordinates.map(function(x){
+                //     return projection.fromGlobalPixels([x[0] + GPC[0], x[1] + GPC[1]], myMap.getZoom());
+                // });
+                // // Cимплифицирование линии - оставляем только каждую третью координату
+                // // coordinates = coordinates.filter(function (_, index){
+                // //     return index % 3 === 0;
+                // // });
+                // // Создаем новый полигон
+                // polygon = new ymaps.Polygon([coordinates], {}, {
+                //     strokeColor: '#0000ff',
+                //     fillColor: '#8080ff',
+                //     interactivityModel: 'default#transparent',
+                //     strokeWidth: 2,
+                //     opacity: 0.7
+                // });
+
+                var polygon = new ymaps.Polygon([], {}, {
+                    // Курсор в режиме добавления новых вершин.
+                    editorDrawingCursor: "crosshair",
+                    // Максимально допустимое количество вершин.
+                    editorMaxPoints: 50,
+                    // Цвет заливки.
+                    fillColor: 'rgba(255,173,181,0.68)',
+                    // Цвет обводки.
+                    strokeColor: '#e3ce95',
+                    // Ширина обводки.
+                    strokeWidth: 1
+                });
+
+                // Добавляем многоугольник на карту.
+                myMap.geoObjects.add(polygon);
+
+                // В режиме добавления новых вершин меняем цвет обводки многоугольника.
+                var stateMonitor = new ymaps.Monitor(polygon.editor.state);
+                stateMonitor.add("drawing", function (newValue) {
+                    polygon.options.set("strokeColor", newValue ? '#FF0000' : '#0000FF');
+                    draw()
+                })
+
+                // function getCoord() {
+                //     return polygon.geometry.getCoordinates()
+                // }
+                // Включаем режим редактирования с возможностью добавления новых вершин.
+                polygon.editor.startDrawing();
+
+
+
+
+                function stopDraw() {
+                    polygon.editor.stopDrawing();
+                }
+                function draw() {
+                    var coordinates = polygon.geometry.getCoordinates()[0]
+                    console.log(coordinates)
+
+                    var area = Math.round(ymaps.util.calculateArea(polygon)),
+                        // Вычисляем центр для добавления метки.
+                        center = ymaps.util.bounds.getCenter(polygon.geometry.getBounds());
+                    // Если площадь превышает 1 000 000 м², то приводим ее к км².
+                    if (area <= 1e6) {
+                        area += ' м²';
+                    } else {
+                        area = (area / 1e6).toFixed(3) + ' км²';
+                    }
+                    polygon.properties.set('balloonContent', area);
+
+                    myMap.geoObjects.add(new ymaps.Placemark(center, {'iconCaption': area}, {preset: 'islands#greenDotIconWithCaption'}));
+
+                    // console.log(coordinates)
+                    var firstAnimatedLine = new ymaps.AnimatedLine([...coordinates, coordinates[0]], {}, {
+                        // Задаем цвет.
+                        strokeColor: "#ED4543",
+                        // Задаем ширину линии.
+                        strokeWidth: 5,
+                        // Задаем длительность анимации.
+                        animationTime: 4000
+                    });
+
+                    // Добавляем линии на карту.
+                    myMap.geoObjects.add(firstAnimatedLine);
+                    // Создаем метки.
+                    var firstPoint = new ymaps.Placemark(coordinates[0], {}, {
+                        preset: 'islands#redRapidTransitCircleIcon'
+                    });
+                    // Функция анимации пути.
+                    function playAnimation() {
+                        // Добавляем первую метку на карту.
+                        myMap.geoObjects.add(firstPoint);
+                        // Анимируем первую линию.
+                        firstAnimatedLine.animate()
+                            // После окончания анимации первой линии добавляем вторую метку на карту и анимируем вторую линию.
+                            // После паузы перезапускаем анимацию.
+                            .then(function() {
+                                // Удаляем метки с карты.
+                                myMap.geoObjects.remove(firstPoint);
+                                // Перезапускаем анимацию.
+                                playAnimation();
+                            });
+                    }
+                    // Запускаем анимацию пути.
+                    playAnimation();
+                }
+
+
+
+                // myMap.geoObjects.add(polygon);
+
+
+        } else {
+            if(polygon){
+                myMap.geoObjects.remove(polygon);
+                polygon = null;
             }
-        });
-
-    myMap.geoObjects.add(polygon);
-    polygon.editor.startDrawing();
-
-    $('input').attr('disabled', false);
-
-    // Обработка нажатия на любую кнопку.
-    $('input').click(
-        function () {
-            // Отключаем кнопки, чтобы на карту нельзя было
-            // добавить более одного редактируемого объекта (чтобы в них не запутаться).
-            $('input').attr('disabled', true);
-
-            polygon.editor.stopEditing();
-
-            printGeometry(polygon.geometry.getCoordinates());
-
-        });
-
-
-}
-
-// Выводит массив координат геообъекта в <div id="geometry">
-function printGeometry (coords) {
-    $('#geometry').html('Координаты: ' + stringify(coords));
-
-}
-
-function stringify (coords) {
-    console.log(coords)
-    let res = '';
-    if ($.isArray(coords)) {
-        res = '[ ';
-        for (let i = 0, l = coords.length; i < l; i++) {
-            if (i > 0) {
-                res += ', ';
-            }
-            res += stringify(coords[i]);
         }
-        res += ' ]';
-    } else if (typeof coords == 'number') {
-        res = coords.toPrecision(6);
-    } else if (coords.toString) {
-        res = coords.toString();
-    }
-
-    return res;
-}
+    });
+});
 
 
-
-var canvas = document.querySelector('canvas');
-var ctx = canvas.getContext('2d');
+/* Рисование области на карте */
+// function drawLineOverMap(map){
+//     var canvas = document.querySelector('.draw-canvas');
+//     $('.draw-canvas').removeClass('hide');
+//     var ctx2d = canvas.getContext('2d');
+//     var drawing = false;
+//     var coordinates = [];
+//     // Задаем размеры канвасу как у карты
+//     var rect = map.container.getSize();
+//     canvas.style.width = rect[0] + 'px';
+//     canvas.style.height = rect[1] + 'px';
+//     canvas.width = rect[0];
+//     canvas.height = rect[1];
+//     // Применяем стили
+//     ctx2d.strokeStyle = '#0000ff';
+//     ctx2d.lineWidth = 3;
+//     canvas.style.opacity = 0.7;
+//     ctx2d.clearRect(0, 0, canvas.width, canvas.height);
+//     // Показываем канвас - он будет сверху карты из-за position: absolute
+//     canvas.style.display = 'block';
+//     canvas.onmousedown = function(e){
+//         // При нажатии мыши запоминаем координаты и что мы начали рисовать
+//         coordinates.push([e.offsetX, e.offsetY]);
+//         //console.log([e.offsetX, e.offsetY])
+//         drawing = true;
+//     };
+//     canvas.onmousemove = function(e){
+//         // При движении мыши запоминаем координаты и рисуем линию
+//         if(drawing){
+//             var last = coordinates[coordinates.length - 1];
+//             ctx2d.beginPath();
+//             ctx2d.moveTo(last[0], last[1]);
+//             ctx2d.lineTo(e.offsetX, e.offsetY);
+//             ctx2d.stroke();
+//             coordinates.push([e.offsetX, e.offsetY]);
+//         }
+//     };
+//     return new Promise(function(resolve){
+//         // При отпускании мыши запоминаем координаты и скрываем канвас
+//         canvas.onmouseup = function(e){
+//             coordinates.push([e.offsetX, e.offsetY]);
+//
+//
+//             canvas.style.display = 'none';
+//             drawing = false;
+//             GPC = map.getGlobalPixelBounds()[0];
+//             // console.log(coordinates)
+//             resolve(coordinates);
+//             $("#drawButton").attr('disabled', true)
+//             $('.draw-canvas').addClass('hide');
+//             // document.querySelector('#map').style.display = 'none';
+//         };
+//
+//
+//     });
+//
+// }
