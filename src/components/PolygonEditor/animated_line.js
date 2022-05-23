@@ -13,20 +13,21 @@ ymaps.modules.define('AnimatedLine', [
      **/
     function AnimatedLine(geometry, properties, options) {
         AnimatedLine.superclass.constructor.call(this, geometry, properties, options);
-        this._loopTime = 10;
-        this._animationTime = this.options.get('animationTime', 2);
+        this._loopTime = 50;
+        this._animationTime = this.options.get('animationTime', 300);
         // Вычислим длину переданной линии.
         var distance = 0;
         var previousElem = geometry[0];
         this.geometry.getCoordinates().forEach(function(elem) {
             distance += getDistance(elem, previousElem);
-            console.log(distance)
+            // console.log(distance)
             previousElem = elem;
         });
         // Вычислим минимальный интервал отрисовки.
         this._animationInterval = distance / this._animationTime * this._loopTime;
         // Создадим массив с более частым расположением промежуточных точек.
         this._smoothCoords = generateSmoothCoords(geometry, this._animationInterval);
+        console.log(generateSmoothCoords(geometry, this._animationInterval))
     }
     defineClass(AnimatedLine, Polyline, {
         // Анимировать линию.

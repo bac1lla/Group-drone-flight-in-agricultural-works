@@ -68,7 +68,8 @@ ymaps.ready(['util.calculateArea', 'AnimatedLine']).then( function(){
                 }
                 function draw() {
                     var coordinates = polygon.geometry.getCoordinates()[0]
-                    console.log(coordinates)
+
+
 
                     var area = Math.round(ymaps.util.calculateArea(polygon)),
                         // Вычисляем центр для добавления метки.
@@ -83,8 +84,47 @@ ymaps.ready(['util.calculateArea', 'AnimatedLine']).then( function(){
 
                     myMap.geoObjects.add(new ymaps.Placemark(center, {'iconCaption': area}, {preset: 'islands#greenDotIconWithCaption'}));
 
+
+
+                    function calcDistance(point1, point2) {
+                        return Math.sqrt(
+                            Math.pow((point2[0] - point1[0]), 2) + Math.pow((point2[1] - point1[1]), 2)
+                        );
+                    }
+
+                    let maxDistance = {
+                        distance: 0,
+                        point1: 0,
+                        point2: 0,
+                    }
+                    let distance = 0
+                    let arrDistance = []
+                    for (let i = 0; i < coordinates.length - 1; i++) {
+                        for (let j = 0; j < coordinates.length - 1; j++) {
+                            console.log(1)
+                            distance = calcDistance(coordinates[i], coordinates[j])
+                            if (distance > 0)
+                                arrDistance.push(distance)
+
+                            if (distance > maxDistance.distance) {
+                                maxDistance = {
+                                    distance: distance,
+                                    point1: coordinates[i],
+                                    point2: coordinates[j]
+                                }
+                            }
+                        }
+                    }
+                    console.log(arrDistance)
+                    console.log("max", maxDistance)
+
+
+                    let arrLineCoord = drawLines(lineCoord(maxDistance.point1, maxDistance.point2, coordinates), coordinates)
+
+                    console.log(arrLineCoord)
+
                     // console.log(coordinates)
-                    var firstAnimatedLine = new ymaps.AnimatedLine([...coordinates, coordinates[0]], {}, {
+                    var firstAnimatedLine = new ymaps.AnimatedLine([maxDistance.point1, maxDistance.point2], {}, {
                         // Задаем цвет.
                         strokeColor: "#ED4543",
                         // Задаем ширину линии.
@@ -93,10 +133,12 @@ ymaps.ready(['util.calculateArea', 'AnimatedLine']).then( function(){
                         animationTime: 4000
                     });
 
+
+
                     // Добавляем линии на карту.
                     myMap.geoObjects.add(firstAnimatedLine);
                     // Создаем метки.
-                    var firstPoint = new ymaps.Placemark(coordinates[0], {}, {
+                    var firstPoint = new ymaps.Placemark(arrLineCoord[0], {}, {
                         preset: 'islands#redRapidTransitCircleIcon'
                     });
                     // Функция анимации пути.
@@ -117,6 +159,9 @@ ymaps.ready(['util.calculateArea', 'AnimatedLine']).then( function(){
                     // Запускаем анимацию пути.
                     playAnimation();
                 }
+
+
+
 
 
 
@@ -190,3 +235,43 @@ ymaps.ready(['util.calculateArea', 'AnimatedLine']).then( function(){
 //     });
 //
 // }
+
+
+function lineCoord(point1, point2, coordinates) {
+
+    let arrLinesK = []
+    let arrLinesB = []
+
+    let x = 0
+    let y = 0
+
+
+
+    let arr = []
+
+        arr[0] = []
+        arr[0][0] = (point1[1] - point2[1]) / (point1[0] - point2[0])
+        arr[0][1] = point2[1] - arr[0][0] * point2[0]
+
+
+
+    return arr
+
+}
+//
+function drawLines(arr, coordinates) {
+
+    let slope = arr[0][0]
+    console.log(slope)
+
+    let arrMass = []
+    for (let i = 0 ; i < coordinates.length; i++) {
+        arrMass[i] = []
+        arrMass[i][0] = (-1 * +coordinates[i][1] - +coordinates[i][0] * +slope) / +slope
+        arrMass[i][1] = (-1 * slope *  +coordinates[i][0]) / +slope
+    }
+
+    return arrMass
+
+
+}
