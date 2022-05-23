@@ -54,9 +54,7 @@ ymaps.ready(['util.calculateArea', 'AnimatedLine']).then( function(){
                     draw()
                 })
 
-                // function getCoord() {
-                //     return polygon.geometry.getCoordinates()
-                // }
+
                 // Включаем режим редактирования с возможностью добавления новых вершин.
                 polygon.editor.startDrawing();
 
@@ -87,9 +85,20 @@ ymaps.ready(['util.calculateArea', 'AnimatedLine']).then( function(){
 
 
                     function calcDistance(point1, point2) {
-                        return Math.sqrt(
-                            Math.pow((point2[0] - point1[0]), 2) + Math.pow((point2[1] - point1[1]), 2)
-                        );
+
+                        var lineStringGeometry = new ymaps.geometry.LineString([point1, point2])
+                        var line = new ymaps.GeoObject({ geometry: lineStringGeometry });
+
+                        myMap.geoObjects.add(line);
+
+                        let distance = line.geometry.getDistance()
+
+
+                        myMap.geoObjects.remove(line);
+
+                        return distance
+
+
                     }
 
                     let maxDistance = {
@@ -101,7 +110,6 @@ ymaps.ready(['util.calculateArea', 'AnimatedLine']).then( function(){
                     let arrDistance = []
                     for (let i = 0; i < coordinates.length - 1; i++) {
                         for (let j = 0; j < coordinates.length - 1; j++) {
-                            console.log(1)
                             distance = calcDistance(coordinates[i], coordinates[j])
                             if (distance > 0)
                                 arrDistance.push(distance)
@@ -115,13 +123,83 @@ ymaps.ready(['util.calculateArea', 'AnimatedLine']).then( function(){
                             }
                         }
                     }
-                    console.log(arrDistance)
-                    console.log("max", maxDistance)
 
 
-                    let arrLineCoord = drawLines(lineCoord(maxDistance.point1, maxDistance.point2, coordinates), coordinates)
+                    function maxCoordCalc(coordinates) {
 
-                    console.log(arrLineCoord)
+                        let maxCoord = 0
+
+                        for (let i = 0; i < coordinates.length - 1; i ++) {
+                            if (coordinates[i][0] > maxCoord) {
+                                maxCoord = coordinates[i][0]
+                            }
+                        }
+
+                        return maxCoord
+                    }
+
+                    function minCoordCalc(coordinates) {
+
+                        let minCoord = 100000
+
+                        for (let i = 0; i < coordinates.length - 1; i ++) {
+                            if (coordinates[i][0] < minCoord) {
+                                minCoord = coordinates[i][0]
+                            }
+                        }
+
+                        return minCoord
+                    }
+
+                    function maxCoordPair (point1, point2) {
+
+                        return point1 > point2 ? point1 : point2
+                    }
+
+                    function minCoordPair (point1, point2) {
+
+                        return point1 < point2 ? point1 : point2
+                    }
+
+
+                    let interval = 0
+
+                    let maxCoord = maxCoordCalc(coordinates)
+                    let minCoord = minCoordCalc(coordinates)
+
+                    let arrLinesCoord = []
+                    for (let i = 0; i < maxDistance.distance; i++) {
+                        if (minCoordPair(maxDistance.point1[0] + interval, maxDistance.point2[0] + interval) >= maxCoord) {
+                            interval = -0.0003
+                            for (let j = 0; j < maxDistance.distance; j++) {
+                                if (maxCoordPair(maxDistance.point1[0] + interval, maxDistance.point2[0] + interval) <= minCoord) {
+                                    console.log("break")
+                                    break
+                                }
+                                var lineString = new ymaps.geometry.LineString([[maxDistance.point1[0] + interval, maxDistance.point1[1]], [maxDistance.point2[0] + interval, maxDistance.point2[1]]])
+                                var line = new ymaps.GeoObject({ geometry: lineString });
+                                myMap.geoObjects.add(line);
+                                interval -= 0.0003
+                            }
+                            break
+                        }
+                        // arrLinesCoord[i]= [[maxDistance.point1[0] + interval, maxDistance.point1[1]], [maxDistance.point2[0] + interval, maxDistance.point2[1]]]
+                        var lineString = new ymaps.geometry.LineString([[maxDistance.point1[0] + interval, maxDistance.point1[1]], [maxDistance.point2[0] + interval, maxDistance.point2[1]]])
+                        var line = new ymaps.GeoObject({ geometry: lineString });
+                        myMap.geoObjects.add(line);
+                        interval += 0.0003
+                    }
+
+
+                    let arrLineCoord = drawLines(lineCoord(maxDistance.point1, maxDistance.point2), coordinates)
+                    let smoothCoord = []
+                    for (let i = 0; i < coordinates.length - 1; i++) {
+                        smoothCoord[i] = generateSmoothCoords([coordinates[i], coordinates[i + 1]], 0.000001)
+                    }
+
+                    console.log(smoothCoord)
+
+
 
                     // console.log(coordinates)
                     var firstAnimatedLine = new ymaps.AnimatedLine([maxDistance.point1, maxDistance.point2], {}, {
@@ -133,12 +211,15 @@ ymaps.ready(['util.calculateArea', 'AnimatedLine']).then( function(){
                         animationTime: 4000
                     });
 
+                    console.log(maxDistance.distance)
+                    // console.log([maxDistance.point1[0] + 0.000000090033, maxDistance.point1[1] + 0.000000090033])
+
 
 
                     // Добавляем линии на карту.
                     myMap.geoObjects.add(firstAnimatedLine);
                     // Создаем метки.
-                    var firstPoint = new ymaps.Placemark(arrLineCoord[0], {}, {
+                    var firstPoint = new ymaps.Placemark(maxDistance.point1, {}, {
                         preset: 'islands#redRapidTransitCircleIcon'
                     });
                     // Функция анимации пути.
@@ -237,15 +318,7 @@ ymaps.ready(['util.calculateArea', 'AnimatedLine']).then( function(){
 // }
 
 
-function lineCoord(point1, point2, coordinates) {
-
-    let arrLinesK = []
-    let arrLinesB = []
-
-    let x = 0
-    let y = 0
-
-
+function lineCoord(point1, point2) {
 
     let arr = []
 
@@ -254,11 +327,10 @@ function lineCoord(point1, point2, coordinates) {
         arr[0][1] = point2[1] - arr[0][0] * point2[0]
 
 
-
     return arr
 
 }
-//
+
 function drawLines(arr, coordinates) {
 
     let slope = arr[0][0]
@@ -273,5 +345,22 @@ function drawLines(arr, coordinates) {
 
     return arrMass
 
+}
 
+function generateSmoothCoords(coords, interval) {
+    var smoothCoords = [];
+    smoothCoords.push(coords[0]);
+    for (var i = 1; i < coords.length; i++) {
+        var difference = [coords[i][0] - coords[i - 1][0], coords[i][1] - coords[i - 1][1]];
+        var maxAmount = Math.max(Math.abs(difference[0] / interval), Math.abs(difference[1] / interval));
+        var minDifference = [difference[0] / maxAmount, difference[1] / maxAmount];
+        var lastCoord = coords[i - 1];
+        while (maxAmount > 1) {
+            lastCoord = [lastCoord[0] + minDifference[0], lastCoord[1] + minDifference[1]];
+            smoothCoords.push(lastCoord);
+            maxAmount--;
+        }
+        smoothCoords.push(coords[i])
+    }
+    return smoothCoords;
 }
