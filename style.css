@@ -1,0 +1,38 @@
+html, body {
+    width: 100%;
+    height: 100%;
+    padding: 0;
+    margin: 0;
+    font-family: Arial,sans-serif;
+    font-size: 15px;
+    color: #000000;
+    clear: both;
+}
+
+/*#map {*/
+/*    width: 50%;*/
+/*}*/
+
+.label-draw {
+    width: 100px;
+    height: 30px;
+    /*position: absolute;*/
+    /*top: 10px;*/
+    /*left: 200px;*/
+    cursor: pointer;
+    background-color: blue;
+    color: #ffffff;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.chk {
+    display: flex;
+    align-items: center;
+}
+.drawButton {
+    display: flex;
+    align-items: center;
+}
+

@@ -20,32 +20,47 @@ ymaps.modules.define('AnimatedLine', [
         var previousElem = geometry[0];
         this.geometry.getCoordinates().forEach(function(elem) {
             distance += getDistance(elem, previousElem);
-            // console.log(distance)
             previousElem = elem;
         });
         // Вычислим минимальный интервал отрисовки.
         this._animationInterval = distance / this._animationTime * this._loopTime;
+            console.log("old", distance)
         // Создадим массив с более частым расположением промежуточных точек.
         this._smoothCoords = generateSmoothCoords(geometry, this._animationInterval);
-        console.log(generateSmoothCoords(geometry, this._animationInterval))
+        // console.log(generateSmoothCoords(geometry, this._animationInterval))
     }
     defineClass(AnimatedLine, Polyline, {
         // Анимировать линию.
-        start: function() {
+        start: function(animationInterval, animationTime, loopTime) {
             var value = 0;
             var coords = this._smoothCoords;
             var line = this;
             var loopTime = this._loopTime;
+            let distance = (this._animationInterval * this._animationTime) / this._loopTime;
+
+
             // Будем добавлять по одной точке каждые 50 мс.
-            function loop(value, currentTime, previousTime) {
+            function loop(value, animationInterval, animationTime, loopTime, distance, currentTime, previousTime,) {
+
+                let step = 100 / coords.length
+                let progressBar;
+                distance += (animationInterval * animationTime) / loopTime;
+                // console.log(distance)
                 if (value < coords.length) {
                     if (!currentTime || (currentTime - previousTime) > loopTime) {
+
+                        progressBar = 100 - step * value
                         line.geometry.set(value, coords[value]);
                         value++;
                         previousTime = currentTime;
+                        // console.log(`${100 - step * value}%`)
+                        document.querySelector(".progress-bar").style.width = `${progressBar}%`
+                        // if (dinDistance > 3000 || progressBar < 20) {
+                        //
+                        // }
                     }
                     requestAnimationFrame(function(time) {
-                        loop(value, time, previousTime || time)
+                        loop(value, animationInterval, animationTime, loopTime, distance, time, previousTime || time)
                     });
                 } else {
                     // Бросаем событие окончания отрисовки линии.
@@ -53,7 +68,8 @@ ymaps.modules.define('AnimatedLine', [
                 }
             }
 
-            loop(value);
+            // console.log(distance)
+            loop(value, animationInterval, animationTime, loopTime, distance);
         },
         // Убрать отрисованную линию.
         reset: function() {
@@ -62,7 +78,7 @@ ymaps.modules.define('AnimatedLine', [
         // Запустить полный цикл анимации.
         animate: function() {
             this.reset();
-            this.start();
+            this.start(this._animationInterval, this._animationTime, this._loopTime);
             var deferred = vow.defer();
             this.events.once('animationfinished', function() {
                 deferred.resolve();
@@ -89,6 +105,7 @@ ymaps.modules.define('AnimatedLine', [
         }
         return smoothCoords;
     }
+
     // Функция нахождения расстояния между двумя точками на плоскости.
     function getDistance(point1, point2) {
         return Math.sqrt(
