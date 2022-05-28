@@ -14,7 +14,7 @@ ymaps.modules.define('AnimatedLine', [
     function AnimatedLine(geometry, properties, options) {
         AnimatedLine.superclass.constructor.call(this, geometry, properties, options);
         this._loopTime = 50;
-        this._animationTime = this.options.get('animationTime', 300);
+        this._animationTime = this.options.get('animationTime', 4000);
         // Вычислим длину переданной линии.
         var distance = 0;
         var previousElem = geometry[0];
@@ -24,7 +24,7 @@ ymaps.modules.define('AnimatedLine', [
         });
         // Вычислим минимальный интервал отрисовки.
         this._animationInterval = distance / this._animationTime * this._loopTime;
-            console.log("old", distance)
+            // console.log("old", distance)
         // Создадим массив с более частым расположением промежуточных точек.
         this._smoothCoords = generateSmoothCoords(geometry, this._animationInterval);
         // console.log(generateSmoothCoords(geometry, this._animationInterval))
@@ -36,15 +36,15 @@ ymaps.modules.define('AnimatedLine', [
             var coords = this._smoothCoords;
             var line = this;
             var loopTime = this._loopTime;
-            let distance = (this._animationInterval * this._animationTime) / this._loopTime;
+            // let distance = (this._animationInterval * this._animationTime) / this._loopTime;
 
 
             // Будем добавлять по одной точке каждые 50 мс.
-            function loop(value, animationInterval, animationTime, loopTime, distance, currentTime, previousTime,) {
+            function loop(value, currentTime, previousTime) {
 
                 let step = 100 / coords.length
-                let progressBar;
-                distance += (animationInterval * animationTime) / loopTime;
+                var progressBar;
+                // distance += (animationInterval * animationTime) / loopTime;
                 // console.log(distance)
                 if (value < coords.length) {
                     if (!currentTime || (currentTime - previousTime) > loopTime) {
@@ -54,13 +54,17 @@ ymaps.modules.define('AnimatedLine', [
                         value++;
                         previousTime = currentTime;
                         // console.log(`${100 - step * value}%`)
-                        document.querySelector(".progress-bar").style.width = `${progressBar}%`
-                        // if (dinDistance > 3000 || progressBar < 20) {
-                        //
+                        // console.log()
+                        // document.querySelector(".progress-bar").style.width = `${progressBar}%`
+                        // if (progressBar < 98) {
+                        //     progressBar = 100000
+                        //     value = coords.length - 2
+                        //     line.geometry.set(value, coords[value]);
+                        //     previousTime = currentTime;
                         // }
                     }
                     requestAnimationFrame(function(time) {
-                        loop(value, animationInterval, animationTime, loopTime, distance, time, previousTime || time)
+                        loop(value, time, previousTime || time)
                     });
                 } else {
                     // Бросаем событие окончания отрисовки линии.
@@ -69,7 +73,7 @@ ymaps.modules.define('AnimatedLine', [
             }
 
             // console.log(distance)
-            loop(value, animationInterval, animationTime, loopTime, distance);
+            loop(value);
         },
         // Убрать отрисованную линию.
         reset: function() {
@@ -78,7 +82,7 @@ ymaps.modules.define('AnimatedLine', [
         // Запустить полный цикл анимации.
         animate: function() {
             this.reset();
-            this.start(this._animationInterval, this._animationTime, this._loopTime);
+            this.start();
             var deferred = vow.defer();
             this.events.once('animationfinished', function() {
                 deferred.resolve();
